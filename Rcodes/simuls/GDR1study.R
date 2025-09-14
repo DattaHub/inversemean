@@ -186,26 +186,26 @@ dat_Cauchy$rMode <- rMode_cauchy
 dat_HS <- dat
 dat_HS$Prior <- "Product Half-Cauchy (2,1000)"
 set.seed(1)
-dat_HS$rMode <- rMode_HS+rnorm(100,mean=500,sd=50)
+dat_HS$rMode <- rMode_HS
 
 
 tiff("Light_tailed_GDR1.tiff", units="in", width=9, height=7, res=400)
 
 plot_gg <- ggplot(combined_dat, aes(x = 1/parallax, y = rMode, fill = Prior, shape = Prior)) +
-  geom_hdr(xlim = c(0, 5000), ylim = c(0, 5000)) +  # Adds HDR contours
-  geom_point(alpha = 0.5, size = 3) +  # Adds points with different shapes, alpha for transparency
-  geom_abline(intercept = 0, slope = 1, color = "red", linetype = "dashed") +  # Adds y=x line
-  scale_fill_manual(values = c("Gamma (3,1000)" = "#CB4154", "Reciprocal-Gaussian (0,1000)" = "orange", "Weibull (0.5,1000)" = "purple")) +  # Set fill colors
-  scale_shape_manual(values = c("Gamma (3,1000)" = 21, "Reciprocal-Gaussian (0,1000)" = 22, "Weibull (0.5,1000)" = 23)) +  # Set different shapes
-  labs(x = "Inverse Parallax [pc]", y = "Median Distance [pc]") +  # Labels for axes
-  xlim(0, 5000) +  # Set limits for x-axis
-  ylim(0, 5000) +  # Set limits for y-axis
-  theme_minimal() +  # Sets a minimal theme for the plot
+  geom_hdr(xlim = c(0, 5000), ylim = c(0, 5000)) +  
+  geom_point(alpha = 0.5, size = 3) +  
+  geom_abline(intercept = 0, slope = 1, color = "red", linetype = "dashed") +  
+  scale_fill_manual(values = c("Gamma (3,1000)" = "#CB4154", "Reciprocal-Gaussian (0,1000)" = "orange", "Weibull (0.5,1000)" = "purple")) + 
+  scale_shape_manual(values = c("Gamma (3,1000)" = 21, "Reciprocal-Gaussian (0,1000)" = 22, "Weibull (0.5,1000)" = 23)) +  
+  labs(x = "Inverse Parallax [pc]", y = "Median Distance [pc]") +  
+  xlim(0, 5000) +  
+  ylim(0, 5000) + 
+  theme_minimal() +  
   theme(
-    axis.title = element_text(size = 16),  # Increases the font size of the axis titles
-    axis.text = element_text(size = 14),  # Increases the font size of the axis text (tick labels)
-    legend.text = element_text(size = 14),  # Increases the font size of the legend text
-    legend.title = element_text(size = 16)  # Increases the font size of the legend title
+    axis.title = element_text(size = 16),  
+    axis.text = element_text(size = 14),  
+    legend.text = element_text(size = 14),  
+    legend.title = element_text(size = 16)  
   )
 
 print(plot_gg)
@@ -235,20 +235,20 @@ tiff("Heavy_tailed_GDR1.tiff", units="in", width=9, height=7, res=400)
 
 
 plot_gg <- ggplot(combined_dat, aes(x = 1/parallax, y = rMode, fill = Prior, shape = Prior)) +
-  geom_hdr(xlim = c(0, 5000), ylim = c(0, 5000)) +  # Adds HDR contours
-  geom_point(alpha = 0.5, size = 3) +  # Adds points with different shapes, alpha for transparency
-  geom_abline(intercept = 0, slope = 1, color = "red", linetype = "dashed") +  # Adds y=x line
-  scale_fill_manual(values = c("Inverse-Gamma (4,1/1000)" = "blue", "Half-Cauchy (0,1000)" = "gold", "Product Half-Cauchy (0,1000)" = "lightgreen")) +  # Set fill colors
-  scale_shape_manual(values = c("Inverse-Gamma (4,1/1000)" = 21, "Half-Cauchy (0,1000)" = 22, "Product Half-Cauchy (0,1000)" = 23)) +  # Set different shapes
-  labs(x = "Inverse Parallax [pc]", y = "Median Distance [pc]", fill = "Prior", shape = "Prior") +  # Customize labels
-  xlim(0, 5000) +  # Set limits for x-axis
-  ylim(0, 5000) +  # Set limits for y-axis
-  theme_minimal() +  # Sets a minimal theme for the plot
+  geom_hdr(xlim = c(0, 5000), ylim = c(0, 5000)) +  
+  geom_point(alpha = 0.5, size = 3) +  
+  geom_abline(intercept = 0, slope = 1, color = "red", linetype = "dashed") +  
+  scale_fill_manual(values = c("Inverse-Gamma (4,1/1000)" = "blue", "Half-Cauchy (0,1000)" = "gold", "Product Half-Cauchy (0,1000)" = "lightgreen")) + 
+  scale_shape_manual(values = c("Inverse-Gamma (4,1/1000)" = 21, "Half-Cauchy (0,1000)" = 22, "Product Half-Cauchy (0,1000)" = 23)) +  
+  labs(x = "Inverse Parallax [pc]", y = "Median Distance [pc]", fill = "Prior", shape = "Prior") +  
+  xlim(0, 5000) +  
+  ylim(0, 5000) +  
+  theme_minimal() +  
   theme(
-    axis.title = element_text(size = 16),  # Increases the font size of the axis titles
-    axis.text = element_text(size = 14),  # Increases the font size of the axis text (tick labels)
-    legend.text = element_text(size = 14),  # Increases the font size of the legend text
-    legend.title = element_text(size = 16)  # Increases the font size of the legend title
+    axis.title = element_text(size = 16),  
+    axis.text = element_text(size = 14),  
+    legend.text = element_text(size = 14),  
+    legend.title = element_text(size = 16)  
   ) +
   guides(fill = guide_legend(order = 1), shape = guide_legend(order = 1))
 
