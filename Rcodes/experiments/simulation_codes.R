@@ -674,6 +674,169 @@ init_plot <- ggplot(df_long, aes(x = f, y = SD, color = Prior)) +
 # dev.off()
 
 
+##################### For L=1000 (FW Rejection Loss) #######################
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(pracma)   
+
+prior_gamma <- function(r, shape=3, scale=1e3) dgamma(r, shape=shape, scale=scale)
+
+prior_inv_gamma <- function(r, shape=3, scale=1e3) {
+  if (!requireNamespace("MCMCpack", quietly = TRUE)) stop("Install MCMCpack for dinvgamma()")
+  MCMCpack::dinvgamma(r, shape=shape, scale=scale)
+}
+
+prior_half_cauchy <- function(r, scale=1e3) 2 * dcauchy(r, location=0, scale=scale) * (r >= 0)
+
+prior_rg <- function(r, lam=1e3) {
+  sqrt(2 / pi) * (1 / (lam * r^2)) * exp(-1 / (2 * (lam^2) * r^2))
+}
+
+prior_phc <- function(r, scale=1e3) {
+  v <- log(r / scale)
+  v[v < 0] <- 0
+  v / (r^2)
+}
+
+prior_weibull <- function(r, shape=0.8, scale=1e3) dweibull(r, shape=shape, scale=scale)
+
+priors <- list(
+  Gamma                 = prior_gamma,
+  `Inverse-Gamma`       = prior_inv_gamma,
+  `Half-Cauchy`         = prior_half_cauchy,
+  `Reciprocal-Gaussian` = prior_rg,
+  `Product Half-Cauchy` = prior_phc,
+  Weibull               = prior_weibull
+)
+
+fixed_width_interval <- function(r_grid, post, ell) {
+  dr <- r_grid[2] - r_grid[1]
+  w  <- post * dr
+  cumw <- c(0, cumsum(w))
+  
+  n <- length(r_grid)
+  best_mass <- -Inf
+  best_i <- 1
+  best_j <- 1
+  
+  j <- 1
+  for (i in 1:n) {
+    if (j < i) j <- i
+    while (j < n && (r_grid[j + 1] - r_grid[i]) <= ell) j <- j + 1
+    mass_ij <- cumw[j + 1] - cumw[i]
+    if (mass_ij > best_mass) {
+      best_mass <- mass_ij
+      best_i <- i
+      best_j <- j
+    }
+  }
+  
+  list(a = r_grid[best_i], b = r_grid[best_j], mass = best_mass)
+}
+
+simulate_fixed_width_one <- function(
+    priors,
+    ell = 1000,
+    f_true_grid = seq(0.1, 1.5, by = 0.1),
+    n_sims = 500,
+    r_lim = 1e4,
+    r_grid_len = 5000,
+    r_grid_max_mult = 2,
+    seed = 42
+) {
+  set.seed(seed)
+  
+  r_grid <- seq(1, r_grid_max_mult * r_lim, length.out = r_grid_len)
+  
+  u0 <- runif(n_sims)
+  r_true <- r_lim * u0^(1/3)
+  pi_true <- 1 / r_true
+  
+  out <- list()
+  
+  for (f_true in f_true_grid) {
+    sigma <- f_true * pi_true
+    omega <- rnorm(n_sims, mean = pi_true, sd = sigma)
+    
+    for (pname in names(priors)) {
+      pfun <- priors[[pname]]
+      
+      reject <- logical(n_sims)
+      masses <- numeric(n_sims)
+      
+      for (i in seq_len(n_sims)) {
+        lik <- dnorm(omega[i], mean = 1 / r_grid, sd = sigma[i])
+        unnorm <- pfun(r_grid) * lik
+        
+        Z <- trapz(r_grid, unnorm)
+        if (!is.finite(Z) || Z <= 0) {
+          reject[i] <- NA
+          masses[i] <- NA
+          next
+        }
+        
+        post <- unnorm / Z
+        Istar <- fixed_width_interval(r_grid, post, ell)
+        
+        masses[i] <- Istar$mass
+        reject[i] <- !(r_true[i] >= Istar$a && r_true[i] <= Istar$b)
+      }
+      
+      out[[length(out) + 1]] <- data.frame(
+        f_true = f_true,
+        ell = ell,
+        Prior = pname,
+        rejection = mean(reject, na.rm = TRUE),
+        avg_post_mass = mean(masses, na.rm = TRUE)
+      )
+    }
+  }
+  
+  bind_rows(out)
+}
+
+res_fw_1000 <- simulate_fixed_width_one(
+  priors = priors,
+  ell = 1000,
+  f_true_grid = seq(0.1, 1.5, by = 0.1),
+  n_sims = 500,
+  r_lim = 1e4,
+  r_grid_len = 5000,
+  seed = 42
+)
+
+
+# Rejection probability curve
+ggplot(res_fw_1000, aes(x = f_true, y = rejection, color = Prior)) +
+  geom_line(linewidth = 1) +
+  labs(x = "True fractional parallax error",
+       y = "Rejection probability",
+       title = "Fixed-width rejection loss") +
+  theme_minimal(base_size = 14) +
+  theme(legend.title = element_blank())
+
+ggplot(res_fw_1000, aes(x = f_true, y = avg_post_mass, color = Prior)) +
+  geom_line(linewidth = 1) +
+  labs(x = "f_true",
+       y = "Avg posterior mass of I*",
+       title = "Avg posterior mass in max-mass fixed-width interval (ell = 1000)") +
+  theme_minimal(base_size = 14) +
+  theme(legend.title = element_blank())
+
+
+diag_df <- res_fw_1000 %>% mutate(post_noncoverage = 1 - avg_post_mass)
+
+ggplot(diag_df, aes(x = post_noncoverage, y = rejection, color = Prior)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+  geom_path(linewidth = 1) +
+  geom_point(size = 1.8) +
+  labs(x = "1 - Avg posterior mass of I*",
+       y = "Rejection probability",
+       title = "Fixed-width calibration") +
+  theme_minimal(base_size = 14) +
+  theme(legend.title = element_blank())
 
 
 
