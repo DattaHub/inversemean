@@ -839,4 +839,417 @@ ggplot(diag_df, aes(x = post_noncoverage, y = rejection, color = Prior)) +
   theme(legend.title = element_blank())
 
 
+               
+################## Near-zero PPC discrepancy curves ##########################
+############################################################
+## Near-zero posterior predictive discrepancy diagnostics
+############################################################
+
+J_near <- 600
+omega_obs <- seq(0, 1.5, length.out = J_near)
+
+sigma_omega <- 0.045
+
+r_min <- 1e-5
+r_max <- 1e5
+n_grid <- 20000
+r_grid <- exp(seq(log(r_min), log(r_max), length.out = n_grid))
+dr <- numeric(length(r_grid))
+dr[2:(n_grid - 1)] <- 0.5 * (r_grid[3:n_grid] - r_grid[1:(n_grid - 2)])
+dr[1] <- r_grid[2] - r_grid[1]
+dr[n_grid] <- r_grid[n_grid] - r_grid[n_grid - 1]
+
+
+
+log_sum_exp <- function(x) {
+  m <- max(x)
+  m + log(sum(exp(x - m)))
+}
+
+safe_log <- function(x) log(pmax(x, 1e-300))
+
+
+log_prior_gamma <- function(r) {
+  # Gamma(shape = 3, rate = 10)
+  dgamma(r, shape = 3, rate = 10, log = TRUE)
+}
+
+log_prior_ig <- function(r) {
+  # Inverse-Gamma(shape = 4, scale = 1)
+  a <- 4
+  b <- 1
+  a * log(b) - lgamma(a) - (a + 1) * log(r) - b / r
+}
+
+log_prior_half_cauchy <- function(r) {
+  # Half-Cauchy(0, 1): 2/[pi(1+r^2)]
+  log(2 / pi) - log1p(r^2)
+}
+
+log_prior_rg <- function(r) {
+  # Reciprocal-Gaussian RG+(0, lambda^2), lambda = 1
+  lam <- 1
+  0.5 * log(2 / pi) - log(lam) - 2 * log(r) -
+    1 / (2 * lam^2 * r^2)
+}
+
+log_prior_weibull <- function(r) {
+  # Weibull(shape = 0.5, scale = 1)
+  dweibull(r, shape = 0.5, scale = 1, log = TRUE)
+}
+
+log_prior_phc <- function(r) {
+  # f(r) = 4 log(r) / [pi^2 (r^2 - 1)], r > 0.
+  out <- numeric(length(r))
+  close <- abs(r - 1) < 1e-8
+  
+  out[close] <- log(2 / pi^2)
+  
+  not_close <- !close
+  dens <- 4 * log(r[not_close]) / (pi^2 * (r[not_close]^2 - 1))
+  dens <- pmax(dens, 1e-300)
+  out[not_close] <- log(dens)
+  
+  out
+}
+
+log_priors <- list(
+  "Gamma"               = log_prior_gamma,
+  "Half-Cauchy"         = log_prior_half_cauchy,
+  "Inverse-Gamma"       = log_prior_ig,
+  "Product Half-Cauchy" = log_prior_phc,
+  "Reciprocal-Gaussian" = log_prior_rg,
+  "Weibull"             = log_prior_weibull
+)
+
+prior_levels <- c(
+  "Gamma",
+  "Half-Cauchy",
+  "Inverse-Gamma",
+  "Product Half-Cauchy",
+  "Reciprocal-Gaussian",
+  "Weibull"
+)
+
+my_cols <- c(
+  "Gamma"               = "#B22222",
+  "Half-Cauchy"         = "#FFD700",
+  "Inverse-Gamma"       = "#1E90FF",
+  "Product Half-Cauchy" = "#228B22",
+  "Reciprocal-Gaussian" = "#FF8C00",
+  "Weibull"             = "#8A2BE2"
+)
+
+
+
+posterior_weights <- function(omega, log_prior_fun) {
+  log_lik <- dnorm(omega, mean = 1 / r_grid, sd = sigma_omega, log = TRUE)
+  log_prior <- log_prior_fun(r_grid)
+  
+  log_mass <- log_lik + log_prior + log(dr)
+  log_mass <- log_mass - log_sum_exp(log_mass)
+  
+  exp(log_mass)
+}
+
+posterior_predictive_draws <- function(log_prior_fun,
+                                       n_draws_per_omega = 50) {
+  reps <- vector("list", length(omega_obs))
+  
+  for (j in seq_along(omega_obs)) {
+    w <- posterior_weights(omega_obs[j], log_prior_fun)
+    
+    r_samp <- sample(
+      r_grid,
+      size = n_draws_per_omega,
+      replace = TRUE,
+      prob = w
+    )
+    
+    reps[[j]] <- rnorm(
+      n_draws_per_omega,
+      mean = 1 / r_samp,
+      sd = sigma_omega
+    )
+  }
+  
+  unlist(reps)
+}
+
+n_draws_per_omega <- 50
+
+yrep_list <- lapply(log_priors, function(lp) {
+  posterior_predictive_draws(lp, n_draws_per_omega = n_draws_per_omega)
+})
+
+
+# Discrepancy metrics on expanding near-zero windows [0,h]
+
+hist_prob_conditional <- function(x, breaks, eps = 1e-10) {
+  a <- min(breaks)
+  b <- max(breaks)
+  
+  x_win <- x[is.finite(x) & x >= a & x <= b]
+  
+  if (length(x_win) == 0) {
+    p <- rep(1 / (length(breaks) - 1), length(breaks) - 1)
+  } else {
+    counts <- hist(
+      x_win,
+      breaks = breaks,
+      plot = FALSE,
+      include.lowest = TRUE,
+      right = TRUE
+    )$counts
+    
+    p <- counts / sum(counts)
+  }
+  
+  p <- p + eps
+  p / sum(p)
+}
+
+
+hist_prob_unconditional <- function(x, breaks) {
+  a <- min(breaks)
+  b <- max(breaks)
+  
+  n_total <- length(x[is.finite(x)])
+  x_win <- x[is.finite(x) & x >= a & x <= b]
+  
+  if (length(x_win) == 0) {
+    counts <- rep(0, length(breaks) - 1)
+  } else {
+    counts <- hist(
+      x_win,
+      breaks = breaks,
+      plot = FALSE,
+      include.lowest = TRUE,
+      right = TRUE
+    )$counts
+  }
+  
+  counts / n_total
+}
+
+
+kl_discrete <- function(p, q, eps = 1e-12) {
+  p <- p + eps
+  q <- q + eps
+  p <- p / sum(p)
+  q <- q / sum(q)
+  sum(p * log(p / q))
+}
+
+
+js_discrete <- function(p, q, eps = 1e-12) {
+  p <- p + eps
+  q <- q + eps
+  p <- p / sum(p)
+  q <- q / sum(q)
+  m <- 0.5 * (p + q)
+  0.5 * kl_discrete(p, m) + 0.5 * kl_discrete(q, m)
+}
+
+
+hellinger_discrete <- function(p, q, eps = 1e-12) {
+  p <- p + eps
+  q <- q + eps
+  p <- p / sum(p)
+  q <- q / sum(q)
+  sqrt(0.5 * sum((sqrt(p) - sqrt(q))^2))
+}
+
+
+compute_metrics_for_window <- function(rep_values, h, n_bins = 40,
+                                       lower = 0) {
+  breaks <- seq(lower, h, length.out = n_bins + 1)
+  
+  obs_in <- omega_obs[is.finite(omega_obs) & omega_obs >= lower & omega_obs <= h]
+  rep_in <- rep_values[is.finite(rep_values) & rep_values >= lower & rep_values <= h]
+  
+  p_obs_cond <- hist_prob_conditional(omega_obs, breaks)
+  p_rep_cond <- hist_prob_conditional(rep_values, breaks)
+  
+  conditional_js <- js_discrete(p_obs_cond, p_rep_cond)
+  conditional_hell <- hellinger_discrete(p_obs_cond, p_rep_cond)
+  
+  p_obs_uncond <- hist_prob_unconditional(omega_obs, breaks)
+  p_rep_uncond <- hist_prob_unconditional(rep_values, breaks)
+  local_l1_uncond <- sum(abs(p_obs_uncond - p_rep_uncond))
+  
+  obs_mass <- mean(is.finite(omega_obs) & omega_obs >= lower & omega_obs <= h)
+  rep_mass <- mean(is.finite(rep_values) & rep_values >= lower & rep_values <= h)
+  
+  conditional_ks <- NA_real_
+  if (length(obs_in) >= 2 && length(rep_in) >= 2) {
+    conditional_ks <- suppressWarnings(
+      as.numeric(ks.test(obs_in, rep_in)$statistic)
+    )
+  }
+  
+  data.frame(
+    h = h,
+    lower = lower,
+    obs_mass = obs_mass,
+    rep_mass = rep_mass,
+    abs_mass_diff = abs(obs_mass - rep_mass),
+    conditional_JS = conditional_js,
+    conditional_Hellinger = conditional_hell,
+    conditional_KS = conditional_ks,
+    local_L1_unconditional = local_l1_uncond
+  )
+}
+h_grid <- seq(0.10, 1.50, length.out = 40)
+
+metric_df <- bind_rows(lapply(names(yrep_list), function(prior_name) {
+  bind_rows(lapply(h_grid, function(h) {
+    compute_metrics_for_window(
+      rep_values = yrep_list[[prior_name]],
+      h = h,
+      n_bins = 40,
+      lower = 0
+    )
+  })) %>%
+    mutate(Prior = prior_name)
+}))
+
+metric_df$Prior <- factor(metric_df$Prior, levels = prior_levels)
+
+
+############################################################
+## Figure: near-zero discrepancy curves
+############################################################
+
+p_js <- ggplot(metric_df, aes(x = h, y = conditional_JS, color = Prior)) +
+  geom_line(linewidth = 1.05) +
+  scale_color_manual(values = my_cols) +
+  labs(
+    x = expression(h),
+    y = "JS divergence"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
+
+p_l1 <- ggplot(metric_df, aes(x = h, y = local_L1_unconditional, color = Prior)) +
+  geom_line(linewidth = 1.05) +
+  scale_color_manual(values = my_cols) +
+  labs(
+    x = expression(h),
+    y = expression("" * L^1 * " discrepancy")
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
+
+p_metrics <- (p_js | p_l1) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom")
+
+
+
+
+############################################################
+## Figure: near-zero predictive mass curves
+############################################################
+
+mass_df <- metric_df %>%
+  dplyr::select(Prior, h, obs_mass, rep_mass, abs_mass_diff) %>%
+  tidyr::pivot_longer(
+    cols = c(obs_mass, rep_mass),
+    names_to = "Type",
+    values_to = "Mass"
+  ) %>%
+  dplyr::mutate(
+    Type = dplyr::recode(
+      Type,
+      obs_mass = "Observed mass",
+      rep_mass = "Posterior predictive mass"
+    )
+  )
+
+p_mass <- ggplot() +
+  geom_line(
+    data = dplyr::filter(mass_df, Type == "Posterior predictive mass"),
+    aes(x = h, y = Mass, color = Prior),
+    linewidth = 1
+  ) +
+  geom_line(
+    data = dplyr::filter(mass_df, Type == "Observed mass") %>%
+      dplyr::distinct(h, Mass),
+    aes(x = h, y = Mass),
+    color = "black",
+    linetype = "dashed",
+    linewidth = 1.2
+  ) +
+  scale_color_manual(values = my_cols) +
+  labs(
+    x = expression("near-zero window endpoint " * h),
+    y = expression(P(omega)),
+    title = "Posterior predictive mass assigned to the near-zero region"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
+
+
+############################################################
+## Figure: conditional CDF comparison in a fixed window [0,h0]
+############################################################
+
+h0 <- 1.0
+x_grid <- seq(0, h0, length.out = 300)
+
+conditional_cdf <- function(x, values, h0) {
+  v <- values[values >= 0 & values <= h0]
+  if (length(v) == 0) return(rep(NA_real_, length(x)))
+  sapply(x, function(xx) mean(v <= xx))
+}
+
+cdf_df <- bind_rows(lapply(names(yrep_list), function(prior_name) {
+  data.frame(
+    x = x_grid,
+    CDF = conditional_cdf(x_grid, yrep_list[[prior_name]], h0),
+    Prior = prior_name
+  )
+}))
+
+obs_cdf_df <- data.frame(
+  x = x_grid,
+  CDF = conditional_cdf(x_grid, omega_obs, h0)
+)
+
+cdf_df$Prior <- factor(cdf_df$Prior, levels = prior_levels)
+
+p_cdf <- ggplot(cdf_df, aes(x = x, y = CDF, color = Prior)) +
+  geom_line(linewidth = 1) +
+  geom_line(
+    data = obs_cdf_df,
+    aes(x = x, y = CDF),
+    inherit.aes = FALSE,
+    color = "black",
+    linetype = "dashed",
+    linewidth = 1.2
+  ) +
+  scale_color_manual(values = my_cols) +
+  labs(
+    x = expression(omega),
+    y = expression(P(Omega <= omega ~ "|" ~ Omega %in% "[" * 0 * "," * h[0] * "]")),
+    title = expression("Conditional near-zero PPC CDF, " * h[0] == 1)
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
+
+
+
 
