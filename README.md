@@ -4,7 +4,7 @@
 
 [arXiv:2410.20641](https://arxiv.org/abs/2410.20641)
 
-This repository contains the `R` and `Stan` codes for Ghosh et al. (2025).
+This repository contains the `R` and `Stan` codes for Ghosh et al. (2026).
 
 ### Contents
 
