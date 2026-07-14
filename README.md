@@ -18,4 +18,4 @@ This repository contains the `R` and `Stan` codes for Ghosh et al. (2026).
 ### Dependencies
 
 R packages: `rstan`, `tidyverse`, `ggplot2`  
-Stan version: 2.x
+Stan (https://github.com/stan-dev). 
