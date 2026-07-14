@@ -8,11 +8,11 @@ This repository contains the `R` and `Stan` codes for Ghosh et al. (2025).
 
 ### Contents
 
-- `Rcodes/experiments/` — R and Stan scripts to reproduce all simulation 
+- `Rcodes/experiments/simulation_codes.r` - R and Stan scripts to reproduce all simulation 
   experiments (Setup A and Setup B) in Section 6.
-- `Rcodes/experiments/` — Code for the real-data analysis using the Gaia 
+- `Rcodes/experiments/GDR1study.R` - R Code for the real-data analysis using the Gaia 
   Data Release 1 (GDR1) dataset in Section 7.
-- MCMC convergence diagnostics (ACF plots, trace plots) and posterior 
+- `Rcodes/experiments/MCMC_diagnostics.r` - MCMC convergence diagnostics (ACF plots, trace plots) and posterior 
   predictive checks (Appendix A.3--A.4).
 - Sensitivity analyses with respect to measurement error and prior scale 
   (Appendix A.5--A.6).
