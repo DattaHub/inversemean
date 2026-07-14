@@ -14,8 +14,6 @@ This repository contains the `R` and `Stan` codes for Ghosh et al. (2025).
   Data Release 1 (GDR1) dataset in Section 7.
 - `Rcodes/experiments/MCMC_diagnostics.r` - MCMC convergence diagnostics (ACF plots, trace plots) and posterior 
   predictive checks (Appendix A.3--A.4).
-- Sensitivity analyses with respect to measurement error and prior scale 
-  (Appendix A.5--A.6).
 
 ### Dependencies
 
