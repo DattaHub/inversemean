@@ -33,10 +33,10 @@ log_prior_gamma <- function(r, L = 1000) {
 }
 
 log_prior_inv_gamma <- function(r, L = 1000) {
-  # Inverse-Gamma(shape = 4, scale = 1/L), matching IG(4, 1/1000)
   a <- 4
-  beta <- 1 / L
-  a * log(beta) - lgamma(a) - (a + 1) * log(r) - beta / r
+  beta <- L
+  a * log(beta) - lgamma(a) -
+    (a + 1) * log(r) - beta / r
 }
 
 log_prior_half_cauchy <- function(r, L = 1000) {
@@ -45,10 +45,8 @@ log_prior_half_cauchy <- function(r, L = 1000) {
 }
 
 log_prior_rg <- function(r, L = 1000) {
-  # Reciprocal-Gaussian RG+(0,L):
-  # t = 1/r ~ N^+(0,L^2)
-  0.5 * log(2 / pi) - log(L) - 2 * log(r) -
-    1 / (2 * L^2 * r^2)
+  0.5 * log(2 / pi) + log(L) -
+    2 * log(r) - L^2 / (2 * r^2)
 }
 
 log_prior_weibull <- function(r, L = 1000) {
@@ -78,7 +76,7 @@ log_priors <- list(
   "Gamma (3,1000)"                 = function(r) log_prior_gamma(r, L),
   "Reciprocal-Gaussian (0,1000)"   = function(r) log_prior_rg(r, L),
   "Weibull (0.5,1000)"             = function(r) log_prior_weibull(r, L),
-  "Inverse-Gamma (4,1/1000)"       = function(r) log_prior_inv_gamma(r, L),
+  "Inverse-Gamma (4,1000)"       = function(r) log_prior_inv_gamma(r, L),
   "Half-Cauchy (0,1000)"           = function(r) log_prior_half_cauchy(r, L),
   "Product Half-Cauchy (0,1000)"   = function(r) log_prior_phc(r, L)
 )
@@ -90,7 +88,7 @@ light_priors <- c(
 )
 
 heavy_priors <- c(
-  "Inverse-Gamma (4,1/1000)",
+  "Inverse-Gamma (4,1000)",
   "Half-Cauchy (0,1000)",
   "Product Half-Cauchy (0,1000)"
 )
@@ -101,7 +99,7 @@ my_cols <- c(
   "Gamma (3,1000)"                 = "#CB4154",
   "Reciprocal-Gaussian (0,1000)"   = "orange",
   "Weibull (0.5,1000)"             = "purple",
-  "Inverse-Gamma (4,1/1000)"       = "#4DA3FF",
+  "Inverse-Gamma (4,1000)"       = "#4DA3FF",
   "Half-Cauchy (0,1000)"           = "#D8B400",
   "Product Half-Cauchy (0,1000)"   = "#3A9D23"
 )
@@ -110,7 +108,7 @@ my_shapes <- c(
   "Gamma (3,1000)"                 = 21,
   "Reciprocal-Gaussian (0,1000)"   = 22,
   "Weibull (0.5,1000)"             = 23,
-  "Inverse-Gamma (4,1/1000)"       = 24,
+  "Inverse-Gamma (4,1000)"       = 24,
   "Half-Cauchy (0,1000)"           = 25,
   "Product Half-Cauchy (0,1000)"   = 8
 )
