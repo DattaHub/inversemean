@@ -63,17 +63,19 @@ plot_b <-
 
 # combined_plot <- plot_a + plot_b
 # ggsave("Enlarged-Likelihood-plot_two_panel.png", plot = combined_plot, width = 12, height = 5, dpi = 400)
-print(combined_plot)
+# print(combined_plot)
 
 ####### Codes for reproducing the simulation results (setup A) #########
 ########################################################################
 
 #################### Compare Squared Error #######################
 ##################################################################
-J = 200
+#J = 200
+J = 500
 y= seq(0, 8, length.out = J)
 c.data = list('J'=J, 'Y' = y)
 stan.iters = 5000
+
 
 ####### (1) Half-Cauchy prior ##########
 cauchy_code <- "data {
@@ -147,7 +149,7 @@ real<lower=0> u[J];
 }
 model {
 for (i in 1:J){
-u[i] ~ RG(1);
+u[i] ~ RG(10);
 Y[i] ~ normal(1/u[i], 0.045);
 }
 }"
@@ -196,13 +198,21 @@ Y[i] ~ normal(1/u[i], 0.045);
 }
 }"
 
+# w.mod <- stan_model(model_code = weibull_code)
+# w.fit <- sampling(w.mod, data=c.data, iter=5000, chains=1, verbose=TRUE, warmup=2500, init=0, seed=123, refresh=10)
+# w.array <- rstan::extract(w.fit, permuted = TRUE)
+# w.u.df <- as.data.frame(w.array[["u"]])
+# w.u.summary <- summarise_draws(w.u.df) 
+# indivmean.dat.Weibull <- data.frame(value=w.u.summary$mean, upper = w.u.summary$q95, lower = w.u.summary$q5,method = "Weibull(\u03b1=0.5, \u03C3=1)")
+# indivmean.dat.Weibull <- cbind(indivmean.dat.Weibull, "Y" = y)
 w.mod <- stan_model(model_code = weibull_code)
 w.fit <- sampling(w.mod, data=c.data, iter=5000, chains=1, verbose=TRUE, warmup=2500, init=0, seed=123, refresh=10)
 w.array <- rstan::extract(w.fit, permuted = TRUE)
 w.u.df <- as.data.frame(w.array[["u"]])
 w.u.summary <- summarise_draws(w.u.df) 
-indivmean.dat.Weibull <- data.frame(value=w.u.summary$mean, upper = w.u.summary$q95, lower = w.u.summary$q5,method = "Weibull(\u03b1=0.5, \u03C3=1)")
+indivmean.dat.Weibull <- data.frame(value=w.u.summary$median, upper = w.u.summary$q95, lower = w.u.summary$q5,method = "Weibull(\u03b1=0.5, \u03C3=1)")
 indivmean.dat.Weibull <- cbind(indivmean.dat.Weibull, "Y" = y)
+
 
 Weibull.data <- indivmean.dat.Weibull[-1,]
 Weibull.data$rtrue <- 1 / Weibull.data$Y
@@ -245,7 +255,8 @@ gamma.fit <- sampling(gamma.mod, data=c.data, iter=5000, chains=1, verbose=TRUE,
 gamma.array <- rstan::extract(gamma.fit, permuted = TRUE)
 gamma.u.df <- as.data.frame(gamma.array[["u"]])
 gamma.u.summary <- summarise_draws(gamma.u.df) 
-indivmean.dat.Gamma <- data.frame(value=gamma.u.summary$mean, upper = gamma.u.summary$q95, lower = gamma.u.summary$q5,method = "Gamma (3,10)")
+#indivmean.dat.Gamma <- data.frame(value=gamma.u.summary$mean, upper = gamma.u.summary$q95, lower = gamma.u.summary$q5,method = "Gamma (3,10)")
+indivmean.dat.Gamma <- data.frame(value=gamma.u.summary$median, upper = gamma.u.summary$q95, lower = gamma.u.summary$q5,method = "Gamma (3,10)")
 indivmean.dat.Gamma <- cbind(indivmean.dat.Gamma, "Y" = y)
 
 Gamma.data <- indivmean.dat.Gamma[-1,]
@@ -268,6 +279,19 @@ ppc_dens_overlay(c.data$Y, Y_rep[1:25, ])
 
 #######################################################
 ###### (5) Inverse Gamma ########
+# IG_code <- "data {
+# int<lower=0> J;
+# vector[J] Y;
+# }
+# parameters {
+# real<lower=0> u[J];
+# }
+# model {
+# for (i in 1:J){
+# u[i] ~ inv_gamma(1, 1/(Y[i]+0.01));
+# Y[i] ~ normal(1/u[i], 0.045);
+# }
+# }"
 IG_code <- "data {
 int<lower=0> J;
 vector[J] Y;
@@ -277,11 +301,10 @@ real<lower=0> u[J];
 }
 model {
 for (i in 1:J){
-u[i] ~ inv_gamma(1, 1/(Y[i]+0.01));
+u[i] ~ inv_gamma(4, 1);
 Y[i] ~ normal(1/u[i], 0.045);
 }
 }"
-
 
 IG.mod <- stan_model(model_code = IG_code)
 rstan_options(auto_write = TRUE)
