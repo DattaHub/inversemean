@@ -4,6 +4,8 @@
 
 [arXiv:2410.20641](https://arxiv.org/abs/2410.20641)
 
+![The median shrinkage diagnostic against the observed fractional parallax error](https://github.com/DattaHub/inversemean/blob/main/art/refined_shrinkage_posterior_medians.png?raw=true "The median shrinkage diagnostic against the observed fractional parallax error")
+
 ### Contents
 
 -  `/art`: all figures used in the main manuscript and supplementary materials.
