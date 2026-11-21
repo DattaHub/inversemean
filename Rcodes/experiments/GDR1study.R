@@ -8,7 +8,9 @@ library(scales)
 library(ggdensity)
 library(patchwork)
 
-gdr1 <- read.csv("~/Downloads/gdr1set01.csv")
+setwd("~/GitHub/inversemean/Rcodes/experiments")
+
+gdr1 <- read.csv("gdr1set01.csv")
 
 # Convert mas to arcsec so distances are in parsecs
 gdr1 <- gdr1 %>%
