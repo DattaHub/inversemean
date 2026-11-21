@@ -6,7 +6,7 @@
 
 ### Contents
 
--  '/art': all figures used in the main manuscript and supplementary materials.
+-  `/art`: all figures used in the main manuscript and supplementary materials.
 
 - `/Rcodes/experiments/simulation_codes.R`: This code reproduces all (or most) simulation experiments and figures in the paper, namely, 
   - Likelihood plot
