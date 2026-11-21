@@ -111,7 +111,7 @@ bias_cauchy <- Cauchy.data$value - Cauchy.data$rtrue
 traceplot(cauchy.fit, pars = "u")
 print(summary(cauchy.fit)$summary[,"Rhat"])
 
- 
+
 posterior_samples <- extract(cauchy.fit)
 
 J <- c.data$J
